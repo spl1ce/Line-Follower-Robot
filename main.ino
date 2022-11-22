@@ -5,9 +5,9 @@ const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
 
 
-float Kp = 0.073;
-float Ki = 0;
-float Kd = 1;
+float Kp = 0.123;
+float Ki = 0.00005;
+float Kd = 2;
 
 int P;
 int I;
@@ -94,7 +94,7 @@ void forward_brake(int speedA, int speedB) {
 
 void PID_control() {
   uint16_t position = qtr.readLineBlack(sensorValues); //read the current position
-  int error = 3500 - position; //3500 is the ideal position (the centre)
+  int error = 3500 - 1000 - position; //3500 is the ideal position (the centre)
 
   P = error;
   I = I + error;
@@ -105,7 +105,6 @@ void PID_control() {
   
   int motorspeeda = basespeeda - motorspeed;
   int motorspeedb = basespeedb + motorspeed;
-
 
   if (motorspeeda > maxspeeda) {
     motorspeeda = maxspeeda;
@@ -124,4 +123,3 @@ void PID_control() {
   Serial.println(motorspeedb);
   forward_brake(motorspeeda, motorspeedb);
 }
-
