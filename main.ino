@@ -1,13 +1,13 @@
 #include <QTRSensors.h>
 
 QTRSensors qtr;
-const uint8_t SensorCount = 6;
+const uint8_t SensorCount = 8;
 uint16_t sensorValues[SensorCount];
 
 
-float Kp = 0.123;
-float Ki = 0.00005;
-float Kd = 2;
+float Kp = 0.06; 
+int Ki = 0;
+int Kd = 5;
 
 int P;
 int I;
@@ -20,34 +20,37 @@ boolean onoff = false;
 
 const uint8_t maxspeeda = 255;
 const uint8_t maxspeedb = 255;
-const uint8_t basespeeda = 255;
-const uint8_t basespeedb = 255;
+const uint8_t basespeeda = 160;
+const uint8_t basespeedb = 160;
 
 
-
-int IR2 = 2;
-int IR3 = 3;
-int IR4 = 4;
+int IR1 = A0;
+int IR2 = A1;
+int IR3 = 7;
+int IR4 = 6;
 int IR5 = 5;
-int IR6 = 6;
-int IR7 = 7;
-int IN1 = 10;
-int IN2 = 11;
+int IR6 = 4;
+int IR7 = 3;
+int IR8 = 2;
+int IN1 = 8;
+int IN2 = 9;
 int IN3 = 12;
 int IN4 = 13;
-int ENA = 8;
-int ENB = 9;
+int ENA = 10;
+int ENB = 11;
 
 
 
 void setup() {
+  pinMode(IR1, INPUT);
   pinMode(IR2, INPUT);
   pinMode(IR3, INPUT);
   pinMode(IR4, INPUT);
   pinMode(IR5, INPUT);
   pinMode(IR6, INPUT);
   pinMode(IR7, INPUT);
-  pinMode(IN1, OUTPUT);
+  pinMode(IR8, INPUT);
+  pinMode(IN1, OUTPUT); 
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
@@ -58,7 +61,7 @@ void setup() {
   Serial.begin(9600);
 
   qtr.setTypeRC();
-  qtr.setSensorPins((const uint8_t[]){2, 3, 4, 5, 6, 7}, SensorCount);
+  qtr.setSensorPins((const uint8_t[]){A0, A1 ,7, 6, 5, 4, 3, 2}, SensorCount);
 
   delay(5000);
   calibration();
@@ -83,43 +86,67 @@ void calibration() {
 
 
 void forward_brake(int speedA, int speedB) {
-  //set the appropriate values for aphase and bphase so that the robot goes straight
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
+
+  if (speedA < 0) {
+    speedA  = 0 - speedA;
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+  }
+  else {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+  }
+  if (speedB < 0) {
+    speedB = 0 - speedB;
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+  }
+  else {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+  }
   analogWrite(ENA, speedA);
   analogWrite(ENB, speedB);
 }
 
 void PID_control() {
+  
   uint16_t position = qtr.readLineBlack(sensorValues); //read the current position
-  int error = 3500 - 1000 - position; //3500 is the ideal position (the centre)
+  int error = 3500 - position; //3500 is the ideal position (the centre)
+  int da = 1;
+  int db = 1;
 
   P = error;
   I = I + error;
   D = error - lastError;
   lastError = error;
-  int motorspeed = P*Kp + I*Ki + D*Kd; //calculate the correction
-                                       //needed to be applied to the speed
   
-  int motorspeeda = basespeeda - motorspeed;
-  int motorspeedb = basespeedb + motorspeed;
+  int P_value = P*Kp;
+  int I_value = I*Ki;
+  int D_value = D*Kd;
+  int motorspeed = P*Kp + I*Ki + D*Kd; //calculate the correction
+  
+  int motorspeeda = basespeeda + motorspeed;
+  int motorspeedb = basespeedb -motorspeed;
 
+
+//  String plus = " + ";
+//  String PID_calculation = P_value  + plus +  I_value + plus + D_value;
+
+//  Serial.println(PID_calculation);
+  
   if (motorspeeda > maxspeeda) {
     motorspeeda = maxspeeda;
   }
   if (motorspeedb > maxspeedb) {
     motorspeedb = maxspeedb;
   }
-  if (motorspeeda < 0) {
-    motorspeeda = 0;
+  if  (motorspeeda < -255) {
+    motorspeeda = -255;
   }
-  if (motorspeedb < 0) {
-    motorspeedb = 0;
+  
+  if  (motorspeedb < -255) {
+    motorspeedb = -255;
   }
-  Serial.println(motorspeeda);
-  Serial.println("\t");
-  Serial.println(motorspeedb);
   forward_brake(motorspeeda, motorspeedb);
 }
